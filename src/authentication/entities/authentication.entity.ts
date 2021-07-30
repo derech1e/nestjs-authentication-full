@@ -12,7 +12,13 @@ export class AuthenticationEntity extends AbstractEntity {
   @Exclude()
   public password: string;
 
-  @OneToOne(() => UserEntity, (user: UserEntity) => user.authentication)
+  @Column({ nullable: true })
+  @Exclude()
+  public currentHashedRefreshToken?: string;
+
+  @OneToOne(() => UserEntity, (user: UserEntity) => user.authentication, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn()
   public user: UserEntity;
 }

@@ -6,7 +6,10 @@ import { UserService } from 'src/user/services';
 import { Connection, QueryRunner } from 'typeorm';
 import { CreateAuthenticationDto, RegistrationDto } from '../dtos';
 import { AuthenticationEntity } from '../entities';
-import { WrongCredentialsProvidedException } from '../exceptions';
+import {
+  RefreshTokenNoMatchingException,
+  WrongCredentialsProvidedException,
+} from '../exceptions';
 import { TokenPayload } from '../interfaces';
 import { AuthenticationRepository } from '../repositories';
 import { validateHash } from '../utils';
@@ -20,6 +23,24 @@ export class AuthenticationService {
     private readonly _jwtService: JwtService,
     private readonly _configService: ConfigService,
   ) {}
+
+  public async login(user: UserEntity): Promise<string[]> {
+    const accessTokenCookie = this._getCookieWithJwtAccessToken(user.uuid);
+    const { cookie: refreshTokenCookie, token: refreshToken } =
+      this._getCookieWithJwtRefreshToken(user.uuid);
+
+    await this._setCurrentRefreshToken(user.authentication.id, refreshToken);
+
+    return [accessTokenCookie, refreshTokenCookie];
+  }
+
+  public async logout(user: UserEntity): Promise<void> {
+    await this._removeRefreshToken(user.authentication.id);
+  }
+
+  public refreshToken(user: UserEntity): string {
+    return this._getCookieWithJwtAccessToken(user.uuid);
+  }
 
   public async getAuthenticatedUser(
     emailAddress: string,
@@ -46,16 +67,33 @@ export class AuthenticationService {
     return authentication.user;
   }
 
-  public getCookieWithJwtToken(uuid: string): string {
-    const payload: TokenPayload = { uuid };
-    const token = this._jwtService.sign(payload);
-    return `Authentication=${token}; HttpOnly; Path=/; Max-Age=${this._configService.get(
-      'JWT_ACCESS_TOKEN_EXPIRATION_TIME',
-    )}`;
+  public getCookiesForLogout(): string[] {
+    return [
+      'Authentication=; HttpOnly; Path=/; Max-Age=0',
+      'Refresh=; HttpOnly; Path=/; Max-Age=0',
+    ];
   }
 
-  public getCookieForLogout(): string {
-    return `Authentication=; HttpOnly; Path=/; Max-Age=0`;
+  public async getUserIfRefreshTokenMatches(
+    refreshToken: string,
+    user: UserEntity,
+  ) {
+    const isRefreshTokenMatching = await validateHash(
+      refreshToken,
+      user.authentication.currentHashedRefreshToken,
+    );
+
+    if (!isRefreshTokenMatching) {
+      throw new RefreshTokenNoMatchingException();
+    }
+
+    return user;
+  }
+
+  private async _removeRefreshToken(authenticationId: number) {
+    return this._authenticationRepository.update(authenticationId, {
+      currentHashedRefreshToken: null,
+    });
   }
 
   public async registration({
@@ -88,6 +126,44 @@ export class AuthenticationService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  private _getCookieWithJwtAccessToken(uuid: string): string {
+    const payload: TokenPayload = { uuid };
+    const token = this._jwtService.sign(payload, {
+      secret: this._configService.get('JWT_ACCESS_TOKEN_SECRET'),
+      expiresIn: `${this._configService.get(
+        'JWT_ACCESS_TOKEN_EXPIRATION_TIME',
+      )}s`,
+    });
+
+    return `Authentication=${token}; HttpOnly; Path=/; Max-Age=${this._configService.get(
+      'JWT_ACCESS_TOKEN_EXPIRATION_TIME',
+    )}`;
+  }
+
+  private _getCookieWithJwtRefreshToken(uuid: string) {
+    const payload: TokenPayload = { uuid };
+    const token = this._jwtService.sign(payload, {
+      secret: this._configService.get('JWT_REFRESH_TOKEN_SECRET'),
+      expiresIn: `${this._configService.get(
+        'JWT_REFRESH_TOKEN_EXPIRATION_TIME',
+      )}s`,
+    });
+    const cookie = `Refresh=${token}; HttpOnly; Path=/; Max-Age=${this._configService.get(
+      'JWT_REFRESH_TOKEN_EXPIRATION_TIME',
+    )}`;
+
+    return { cookie, token };
+  }
+
+  private async _setCurrentRefreshToken(
+    authenticationId: number,
+    currentHashedRefreshToken: string,
+  ) {
+    return this._authenticationRepository.update(authenticationId, {
+      currentHashedRefreshToken,
+    });
   }
 
   private async _createAuthentication(

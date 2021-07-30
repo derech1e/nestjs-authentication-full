@@ -7,7 +7,11 @@ import { UserModule } from 'src/user';
 import { AuthenticationController } from './controllers';
 import { AuthenticationRepository } from './repositories';
 import { AuthenticationService } from './services';
-import { LocalStrategy, JwtStrategy } from './strategies';
+import {
+  JwtAccessTokenStrategy,
+  JwtRefreshTokenStrategy,
+  LocalStrategy,
+} from './strategies';
 
 @Module({
   imports: [
@@ -28,7 +32,12 @@ import { LocalStrategy, JwtStrategy } from './strategies';
       }),
     }),
   ],
-  providers: [AuthenticationService, LocalStrategy, JwtStrategy],
+  providers: [
+    AuthenticationService,
+    LocalStrategy,
+    JwtAccessTokenStrategy,
+    JwtRefreshTokenStrategy,
+  ],
   controllers: [AuthenticationController],
 })
 export class AuthenticationModule {}

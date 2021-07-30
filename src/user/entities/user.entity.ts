@@ -10,7 +10,7 @@ export class UserEntity extends AbstractEntity {
   @OneToOne(
     () => AuthenticationEntity,
     (authentication: AuthenticationEntity) => authentication.user,
-    { eager: true },
+    { eager: true, onDelete: 'CASCADE' },
   )
   public authentication: AuthenticationEntity;
 }

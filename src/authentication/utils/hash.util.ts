@@ -1,4 +1,5 @@
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 export async function generateHash(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
@@ -13,4 +14,8 @@ export async function validateHash(
   }
 
   return bcrypt.compare(password, hash);
+}
+
+export function encodeString(text: string): string {
+  return crypto.createHash('sha256').update(text).digest('hex');
 }

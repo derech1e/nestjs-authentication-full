@@ -8,7 +8,10 @@ import { TokenPayload } from '../interfaces';
 import { UserEntity } from 'src/user/entities';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class JwtAccessTokenStrategy extends PassportStrategy(
+  Strategy,
+  'jwt-access-token',
+) {
   constructor(
     private readonly _configService: ConfigService,
     private readonly _userService: UserService,
