@@ -15,4 +15,8 @@ export class UserService {
     const user = this._userRepository.create(createUserDto);
     return queryRunner.manager.save(user);
   }
+
+  public async getUser(uuid: string): Promise<UserEntity> {
+    return this._userRepository.findOne({ uuid });
+  }
 }

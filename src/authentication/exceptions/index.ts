@@ -1,1 +1,1 @@
-export * from './wrong-credentials-provided.exception'
+export * from './wrong-credentials-provided.exception';

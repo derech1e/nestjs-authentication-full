@@ -1,35 +1,16 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Generated,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Column, Entity, OneToOne } from 'typeorm';
 import { AuthenticationEntity } from 'src/authentication/entities';
+import { AbstractEntity } from 'src/common/entities';
 
 @Entity({ name: 'users' })
-export class UserEntity {
-  @PrimaryGeneratedColumn()
-  public id: number;
-
-  @Column()
-  @Generated('uuid')
-  public uuid: string;
-
+export class UserEntity extends AbstractEntity {
   @Column()
   public firstName: string;
 
   @OneToOne(
     () => AuthenticationEntity,
     (authentication: AuthenticationEntity) => authentication.user,
+    { eager: true },
   )
   public authentication: AuthenticationEntity;
-
-  @CreateDateColumn()
-  public createdAt: Date;
-
-  @UpdateDateColumn()
-  public updatedAt: Date;
 }

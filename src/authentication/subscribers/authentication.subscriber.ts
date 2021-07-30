@@ -1,10 +1,11 @@
-import { UtilService } from 'src/util/services/util.service';
+
 import {
   EntitySubscriberInterface,
   EventSubscriber,
   InsertEvent,
 } from 'typeorm';
 import { AuthenticationEntity } from '../entities';
+import { generateHash } from '../utils';
 
 @EventSubscriber()
 export class AuthenticationSubscriber
@@ -18,11 +19,11 @@ export class AuthenticationSubscriber
     entity,
   }: InsertEvent<AuthenticationEntity>): Promise<void> {
     if (entity.password) {
-      entity.password = await UtilService.generateHash(entity.password);
+      entity.password = await generateHash(entity.password);
     }
 
     if (entity.emailAddress) {
-      entity.emailAddress = UtilService.lowerCase(entity.emailAddress);
+      entity.emailAddress = entity.emailAddress.toLowerCase();
     }
   }
 }
