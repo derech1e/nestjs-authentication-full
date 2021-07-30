@@ -3,7 +3,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SnakeNamingStrategy } from './strategies';
 import { AuthenticationSubscriber } from 'src/authentication/subscribers';
-import { UserSubscriber } from 'src/user/subscribers';
 
 @Module({
   imports: [
@@ -18,7 +17,7 @@ import { UserSubscriber } from 'src/user/subscribers';
         password: configService.get('POSTGRES_PASSWORD'),
         database: configService.get('POSTGRES_DB'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-        subscribers: [AuthenticationSubscriber, UserSubscriber],
+        subscribers: [AuthenticationSubscriber],
         namingStrategy: new SnakeNamingStrategy(),
         synchronize: true,
         logging: true,
