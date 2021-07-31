@@ -1,6 +1,13 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { MailService } from 'src/mail/services';
 import { UserEntity } from 'src/user/entities';
 import { UserService } from 'src/user/services';
 import { Connection, QueryRunner } from 'typeorm';
@@ -10,7 +17,7 @@ import {
   RefreshTokenNoMatchingException,
   WrongCredentialsProvidedException,
 } from '../exceptions';
-import { TokenPayload } from '../interfaces';
+import { TokenPayload, VerificationTokenPayload } from '../interfaces';
 import { AuthenticationRepository } from '../repositories';
 import { validateHash } from '../utils';
 
@@ -19,6 +26,8 @@ export class AuthenticationService {
   constructor(
     private readonly _authenticationRepository: AuthenticationRepository,
     private readonly _userService: UserService,
+    @Inject(forwardRef(() => MailService))
+    private readonly _mailService: MailService,
     private readonly _connection: Connection,
     private readonly _jwtService: JwtService,
     private readonly _configService: ConfigService,
@@ -40,6 +49,12 @@ export class AuthenticationService {
 
   public refreshToken(user: UserEntity): string {
     return this._getCookieWithJwtAccessToken(user.uuid);
+  }
+
+  public async confirm(token: string) {
+    const emailAddress = await this._decodeConfirmationToken(token);
+
+    await this._confirmEmail(emailAddress);
   }
 
   public async getAuthenticatedUser(
@@ -90,10 +105,47 @@ export class AuthenticationService {
     return user;
   }
 
-  private async _removeRefreshToken(authenticationId: number) {
-    return this._authenticationRepository.update(authenticationId, {
-      currentHashedRefreshToken: null,
+  // todo: refactor
+  private async _decodeConfirmationToken(token: string) {
+    try {
+      const payload = await this._jwtService.verify(token, {
+        secret: this._configService.get('JWT_VERIFICATION_TOKEN_SECRET'),
+      });
+
+      if (typeof payload === 'object' && 'email' in payload) {
+        return payload.email;
+      }
+
+      throw new BadRequestException();
+    } catch (error) {
+      if (error?.name === 'TokenExpiredError') {
+        throw new BadRequestException('Email confirmation token expired');
+      }
+
+      throw new BadRequestException('Bad confirmation token');
+    }
+  }
+
+  public getJwtConfirmToken(email: string): string {
+    const payload: VerificationTokenPayload = { email };
+    const token = this._jwtService.sign(payload, {
+      secret: this._configService.get('JWT_VERIFICATION_TOKEN_SECRET'),
+      expiresIn: `${this._configService.get(
+        'JWT_VERIFICATION_TOKEN_EXPIRATION_TIME',
+      )}s`,
     });
+
+    return token;
+  }
+
+  public async resendConfirmationLink(uuid: string) {
+    const user = await this._userService.getUser(uuid);
+
+    if (user.authentication.active) {
+      throw new BadRequestException('Email already confirmed');
+    }
+
+    await this._mailService.sendConfirmationEmail(user.authentication);
   }
 
   public async registration({
@@ -128,6 +180,12 @@ export class AuthenticationService {
     }
   }
 
+  private async _removeRefreshToken(authenticationId: number) {
+    return this._authenticationRepository.update(authenticationId, {
+      currentHashedRefreshToken: null,
+    });
+  }
+
   private _getCookieWithJwtAccessToken(uuid: string): string {
     const payload: TokenPayload = { uuid };
     const token = this._jwtService.sign(payload, {
@@ -157,6 +215,16 @@ export class AuthenticationService {
     return { cookie, token };
   }
 
+  private async _confirmEmail(emailAddress: string) {
+    const authentication = await this._getAuthentication(emailAddress);
+
+    if (authentication.active) {
+      throw new BadRequestException('Email already confirmed');
+    }
+
+    await this._markEmailAsConfirmed(emailAddress);
+  }
+
   private async _setCurrentRefreshToken(
     authenticationId: number,
     currentHashedRefreshToken: string,
@@ -164,6 +232,13 @@ export class AuthenticationService {
     return this._authenticationRepository.update(authenticationId, {
       currentHashedRefreshToken,
     });
+  }
+
+  private async _markEmailAsConfirmed(emailAddress: string) {
+    return this._authenticationRepository.update(
+      { emailAddress },
+      { active: true },
+    );
   }
 
   private async _createAuthentication(

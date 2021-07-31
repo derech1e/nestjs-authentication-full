@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MailModule } from 'src/mail';
 import { UserModule } from 'src/user';
 import { AuthenticationController } from './controllers';
 import { AuthenticationRepository } from './repositories';
@@ -18,6 +19,7 @@ import {
     UserModule,
     PassportModule,
     ConfigModule,
+    forwardRef(() => MailModule),
     TypeOrmModule.forFeature([AuthenticationRepository]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -38,6 +40,7 @@ import {
     JwtAccessTokenStrategy,
     JwtRefreshTokenStrategy,
   ],
+  exports: [AuthenticationService],
   controllers: [AuthenticationController],
 })
 export class AuthenticationModule {}

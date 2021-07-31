@@ -1,6 +1,5 @@
 import {
   Body,
-  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -9,28 +8,38 @@ import {
   Post,
   Req,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
+import { MailService } from 'src/mail/services';
 import { UserEntity } from 'src/user/entities';
-import { RegistrationDto } from '../dtos';
+import { ConfirmEmailDto, RegistrationDto } from '../dtos';
 import { AuthenticationEntity } from '../entities';
-import { LocalAuthenticationGuard } from '../guards';
-import { JwtAuthenticationGuard } from '../guards';
-import JwtRefreshGuard from '../guards/jwt-refresh.guard';
+import {
+  JwtAccessTokenGuard,
+  JwtRefreshTokenGuard,
+  LocalAuthenticationGuard,
+} from '../guards';
 import { RequestWithUser } from '../interfaces';
 import { AuthenticationService } from '../services';
 
-@UseInterceptors(ClassSerializerInterceptor)
 @Controller('Authentication')
 export class AuthenticationController {
-  constructor(private readonly _authenticationService: AuthenticationService) {}
+  constructor(
+    private readonly _authenticationService: AuthenticationService,
+    private readonly _mailService: MailService,
+  ) {}
 
   @Post('registration')
   @HttpCode(HttpStatus.OK)
   async registration(
     @Body() registrationDto: RegistrationDto,
   ): Promise<AuthenticationEntity> {
-    return this._authenticationService.registration(registrationDto);
+    const authentication = await this._authenticationService.registration(
+      registrationDto,
+    );
+
+    await this._mailService.sendConfirmationEmail(authentication);
+
+    return authentication;
   }
 
   @HttpCode(HttpStatus.OK)
@@ -48,7 +57,7 @@ export class AuthenticationController {
     return request.user;
   }
 
-  @UseGuards(JwtAuthenticationGuard)
+  @UseGuards(JwtAccessTokenGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @Delete('log-out')
   async logout(@Req() request: RequestWithUser): Promise<void> {
@@ -60,7 +69,7 @@ export class AuthenticationController {
     );
   }
 
-  @UseGuards(JwtRefreshGuard)
+  @UseGuards(JwtRefreshTokenGuard)
   @Get('refresh')
   refresh(@Req() request: RequestWithUser): UserEntity {
     const accessTokenCookie = this._authenticationService.refreshToken(
@@ -70,5 +79,16 @@ export class AuthenticationController {
     request.res.setHeader('Set-Cookie', accessTokenCookie);
 
     return request.user;
+  }
+
+  @Post('confirm')
+  async confirm(@Body() { token }: ConfirmEmailDto): Promise<void> {
+    return this._authenticationService.confirm(token);
+  }
+
+  @Post('resend-confirmation-link')
+  @UseGuards(JwtAccessTokenGuard)
+  async resendConfirmationLink(@Req() request: RequestWithUser) {
+    await this._authenticationService.resendConfirmationLink(request.user.uuid);
   }
 }

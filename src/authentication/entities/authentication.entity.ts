@@ -12,6 +12,10 @@ export class AuthenticationEntity extends AbstractEntity {
   @Exclude()
   public password: string;
 
+  @Column({ default: false })
+  @Exclude()
+  public active: boolean;
+
   @Column({ nullable: true })
   @Exclude()
   public currentHashedRefreshToken?: string;
