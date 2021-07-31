@@ -51,17 +51,15 @@ export class AuthenticationService {
     return this._getCookieWithJwtAccessToken(user.uuid);
   }
 
-  public async confirm(token: string) {
-    const emailAddress = await this._decodeConfirmationToken(token);
-
-    await this._confirmEmail(emailAddress);
+  public async confirm(authentication: AuthenticationEntity) {
+    await this._markEmailAsConfirmed(authentication.emailAddress);
   }
 
   public async getAuthenticatedUser(
     emailAddress: string,
     plainTextPassword: string,
   ): Promise<UserEntity> {
-    const authentication = await this._getAuthentication(emailAddress);
+    const authentication = await this.getAuthentication(emailAddress);
 
     if (!authentication) {
       /**
@@ -105,29 +103,8 @@ export class AuthenticationService {
     return user;
   }
 
-  // todo: refactor
-  private async _decodeConfirmationToken(token: string) {
-    try {
-      const payload = await this._jwtService.verify(token, {
-        secret: this._configService.get('JWT_VERIFICATION_TOKEN_SECRET'),
-      });
-
-      if (typeof payload === 'object' && 'email' in payload) {
-        return payload.email;
-      }
-
-      throw new BadRequestException();
-    } catch (error) {
-      if (error?.name === 'TokenExpiredError') {
-        throw new BadRequestException('Email confirmation token expired');
-      }
-
-      throw new BadRequestException('Bad confirmation token');
-    }
-  }
-
-  public getJwtConfirmToken(email: string): string {
-    const payload: VerificationTokenPayload = { email };
+  public getJwtConfirmToken(emailAddress: string): string {
+    const payload: VerificationTokenPayload = { emailAddress };
     const token = this._jwtService.sign(payload, {
       secret: this._configService.get('JWT_VERIFICATION_TOKEN_SECRET'),
       expiresIn: `${this._configService.get(
@@ -138,14 +115,12 @@ export class AuthenticationService {
     return token;
   }
 
-  public async resendConfirmationLink(uuid: string) {
-    const user = await this._userService.getUser(uuid);
-
-    if (user.authentication.active) {
+  public async resendConfirmationLink(authentication: AuthenticationEntity) {
+    if (authentication.isEmailConfirmed) {
       throw new BadRequestException('Email already confirmed');
     }
 
-    await this._mailService.sendConfirmationEmail(user.authentication);
+    await this._mailService.sendConfirmationEmail(authentication);
   }
 
   public async registration({
@@ -215,16 +190,6 @@ export class AuthenticationService {
     return { cookie, token };
   }
 
-  private async _confirmEmail(emailAddress: string) {
-    const authentication = await this._getAuthentication(emailAddress);
-
-    if (authentication.active) {
-      throw new BadRequestException('Email already confirmed');
-    }
-
-    await this._markEmailAsConfirmed(emailAddress);
-  }
-
   private async _setCurrentRefreshToken(
     authenticationId: number,
     currentHashedRefreshToken: string,
@@ -237,7 +202,7 @@ export class AuthenticationService {
   private async _markEmailAsConfirmed(emailAddress: string) {
     return this._authenticationRepository.update(
       { emailAddress },
-      { active: true },
+      { isEmailConfirmed: true },
     );
   }
 
@@ -254,7 +219,7 @@ export class AuthenticationService {
     return queryRunner.manager.save(authentication);
   }
 
-  private async _getAuthentication(
+  public async getAuthentication(
     emailAddress: string,
   ): Promise<AuthenticationEntity> {
     return this._authenticationRepository.findOne(

@@ -10,6 +10,7 @@ import { AuthenticationRepository } from './repositories';
 import { AuthenticationService } from './services';
 import {
   JwtAccessTokenStrategy,
+  JwtConfirmTokenStrategy,
   JwtRefreshTokenStrategy,
   LocalStrategy,
 } from './strategies';
@@ -39,6 +40,7 @@ import {
     LocalStrategy,
     JwtAccessTokenStrategy,
     JwtRefreshTokenStrategy,
+    JwtConfirmTokenStrategy,
   ],
   exports: [AuthenticationService],
   controllers: [AuthenticationController],

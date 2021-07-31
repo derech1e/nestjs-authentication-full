@@ -5,16 +5,18 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
 import { MailService } from 'src/mail/services';
 import { UserEntity } from 'src/user/entities';
-import { ConfirmEmailDto, RegistrationDto } from '../dtos';
+import { RegistrationDto } from '../dtos';
 import { AuthenticationEntity } from '../entities';
 import {
   JwtAccessTokenGuard,
+  JwtConfirmTokenGuard,
   JwtRefreshTokenGuard,
   LocalAuthenticationGuard,
 } from '../guards';
@@ -81,14 +83,17 @@ export class AuthenticationController {
     return request.user;
   }
 
-  @Post('confirm')
-  async confirm(@Body() { token }: ConfirmEmailDto): Promise<void> {
-    return this._authenticationService.confirm(token);
+  @UseGuards(JwtConfirmTokenGuard)
+  @Patch('confirm')
+  async confirm(@Req() request: RequestWithUser): Promise<void> {
+    return this._authenticationService.confirm(request.user.authentication);
   }
 
   @Post('resend-confirmation-link')
   @UseGuards(JwtAccessTokenGuard)
   async resendConfirmationLink(@Req() request: RequestWithUser) {
-    await this._authenticationService.resendConfirmationLink(request.user.uuid);
+    await this._authenticationService.resendConfirmationLink(
+      request.user.authentication,
+    );
   }
 }

@@ -14,7 +14,7 @@ export class AuthenticationEntity extends AbstractEntity {
 
   @Column({ default: false })
   @Exclude()
-  public active: boolean;
+  public isEmailConfirmed: boolean;
 
   @Column({ nullable: true })
   @Exclude()

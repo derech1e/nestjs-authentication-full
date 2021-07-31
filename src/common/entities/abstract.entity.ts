@@ -17,8 +17,10 @@ export abstract class AbstractEntity {
   public uuid: string;
 
   @CreateDateColumn()
+  @Exclude()
   public createdAt: Date;
 
   @UpdateDateColumn()
+  @Exclude()
   public updatedAt: Date;
 }
