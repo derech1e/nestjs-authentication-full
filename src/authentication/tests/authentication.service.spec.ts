@@ -13,14 +13,19 @@ import {
   mockedJwtService,
 } from 'src/utils/mocks';
 import { Connection } from 'typeorm';
+import { RoleType } from '../constants';
+import { AuthenticationEntity } from '../entities';
 import { AuthenticationRepository } from '../repositories';
 import { AuthenticationService } from '../services';
 
 describe('The AuthenticationService', () => {
   let module: TestingModule;
   let authenticationService: AuthenticationService;
+  let findOne: jest.Mock;
 
   beforeEach(async () => {
+    findOne = jest.fn();
+
     module = await Test.createTestingModule({
       imports: [BullModule.registerQueue({ name: MAIL_QUEUE })],
       providers: [
@@ -37,7 +42,9 @@ describe('The AuthenticationService', () => {
         },
         {
           provide: getRepositoryToken(AuthenticationRepository),
-          useValue: {},
+          useValue: {
+            findOne,
+          },
         },
         {
           provide: getRepositoryToken(UserRepository),
@@ -59,6 +66,41 @@ describe('The AuthenticationService', () => {
 
   it('should be defined', () => {
     expect(authenticationService).toBeDefined();
+  });
+
+  describe('when getting a authentication by email', () => {
+    describe('and the user is matched', () => {
+      let authentication: AuthenticationEntity;
+
+      beforeEach(() => {
+        authentication = new AuthenticationEntity(
+          RoleType.USER,
+          'test@test.com',
+        );
+
+        findOne.mockReturnValue(Promise.resolve(authentication));
+      });
+
+      it('should return the user', async () => {
+        const fetchedAuthentication =
+          await authenticationService.getAuthentication('test@test.com');
+
+        expect(fetchedAuthentication).toEqual(authentication);
+      });
+    });
+
+    describe('and the user is not matched', () => {
+      beforeEach(() => {
+        findOne.mockReturnValue(undefined);
+      });
+
+      it('should undefined', async () => {
+        const user = await authenticationService.getAuthentication(
+          'test@test2.test',
+        );
+        expect(user).toEqual(undefined);
+      });
+    });
   });
 
   describe('when creating a cookie', () => {

@@ -16,7 +16,7 @@ export class UserService {
     return queryRunner.manager.save(user);
   }
 
-  public async getUser(uuid: string): Promise<UserEntity> {
+  public async getUser(uuid: string): Promise<UserEntity | undefined> {
     return this._userRepository.findOne({ uuid });
   }
 }
