@@ -19,11 +19,11 @@ export class MailService {
 
   public async sendConfirmationEmail(
     authentication: AuthenticationEntity,
-  ): Promise<any> {
+  ): Promise<void> {
     const confirmUrl = this.getConfirmUrl(authentication.emailAddress);
 
     try {
-      return this._mailQueue.add(CONFIRM_REGISTRATION, {
+      await this._mailQueue.add(CONFIRM_REGISTRATION, {
         authentication,
         confirmUrl,
       });

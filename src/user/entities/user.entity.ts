@@ -1,6 +1,6 @@
-import { Column, Entity, OneToOne } from 'typeorm';
-import { AuthenticationEntity } from 'src/authentication/entities';
+import { AuthenticationEntity } from '../../authentication/entities';
 import { AbstractEntity } from 'src/common/entities';
+import { Column, Entity, OneToOne } from 'typeorm';
 
 @Entity({ name: 'users' })
 export class UserEntity extends AbstractEntity {
@@ -13,4 +13,12 @@ export class UserEntity extends AbstractEntity {
     { eager: true, onDelete: 'CASCADE' },
   )
   public authentication: AuthenticationEntity;
+
+  constructor(firstName: string, authentication?: AuthenticationEntity);
+  constructor(firstName?: string, authentication?: AuthenticationEntity);
+  constructor(firstName?: string, authentication?: AuthenticationEntity) {
+    super();
+    this.firstName = firstName || '';
+    this.authentication = authentication || undefined;
+  }
 }

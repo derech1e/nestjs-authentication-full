@@ -72,28 +72,29 @@ export class AuthenticationController {
   }
 
   @UseGuards(JwtRefreshTokenGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Get('refresh')
-  refresh(@Req() request: RequestWithUser): UserEntity {
+  refresh(@Req() request: RequestWithUser): void {
     const accessTokenCookie = this._authenticationService.refreshToken(
       request.user,
     );
 
     request.res.setHeader('Set-Cookie', accessTokenCookie);
-
-    return request.user;
   }
 
   @UseGuards(JwtConfirmTokenGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Patch('confirm')
-  async confirm(@Req() request: RequestWithUser): Promise<void> {
-    return this._authenticationService.confirm(request.user.authentication);
+  async confirm(@Req() { user }: RequestWithUser): Promise<void> {
+    return this._authenticationService.confirm(user.authentication);
   }
 
-  @Post('resend-confirmation-link')
+  @Post('confirm/resend')
   @UseGuards(JwtAccessTokenGuard)
-  async resendConfirmationLink(@Req() request: RequestWithUser) {
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resendConfirmationLink(@Req() { user }: RequestWithUser) {
     await this._authenticationService.resendConfirmationLink(
-      request.user.authentication,
+      user.authentication,
     );
   }
 }

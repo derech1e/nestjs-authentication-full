@@ -7,10 +7,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { PostgresErrorCode } from 'src/database/constraints';
 import { MailService } from 'src/mail/services';
 import { UserEntity } from 'src/user/entities';
 import { UserService } from 'src/user/services';
-import { Connection, QueryRunner } from 'typeorm';
+import { Connection, QueryFailedError, QueryRunner } from 'typeorm';
 import { CreateAuthenticationDto, RegistrationDto } from '../dtos';
 import { AuthenticationEntity } from '../entities';
 import {
@@ -148,6 +149,10 @@ export class AuthenticationService {
       return authentication;
     } catch (error) {
       await queryRunner.rollbackTransaction();
+
+      if (error?.code === PostgresErrorCode.UniqueViolation) {
+        throw new BadRequestException('User with that email already exists');
+      }
 
       throw new InternalServerErrorException();
     } finally {
