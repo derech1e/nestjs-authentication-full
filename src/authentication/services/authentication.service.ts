@@ -11,7 +11,7 @@ import { PostgresErrorCode } from 'src/database/constraints';
 import { MailService } from 'src/mail/services';
 import { UserEntity } from 'src/user/entities';
 import { UserService } from 'src/user/services';
-import { Connection, QueryFailedError, QueryRunner } from 'typeorm';
+import { Connection, QueryRunner } from 'typeorm';
 import { CreateAuthenticationDto, RegistrationDto } from '../dtos';
 import { AuthenticationEntity } from '../entities';
 import {
@@ -116,7 +116,9 @@ export class AuthenticationService {
     return token;
   }
 
-  public async resendConfirmationLink(authentication: AuthenticationEntity) {
+  public async resendConfirmationLink(
+    authentication: AuthenticationEntity,
+  ): Promise<void> {
     if (authentication.isEmailConfirmed) {
       throw new BadRequestException('Email already confirmed');
     }
@@ -158,6 +160,24 @@ export class AuthenticationService {
     } finally {
       await queryRunner.release();
     }
+  }
+
+  public async getAuthentication(
+    emailAddress: string,
+  ): Promise<AuthenticationEntity> {
+    return this._authenticationRepository.findOne(
+      { emailAddress },
+      /*
+       * User Entity will always join relationships with Authentication Entity,
+       * but there's no need to do it the other way around (we use { eager: true } in UserEntity file).
+       *
+       * However, this function is used in LocalStrategy and we need to return the user's uuid.
+       * Therefore, we need to rigidly add a relation to the user.
+       *
+       * This will allow us to add a user model with authorization to each request, not the authorization model itself.
+       */
+      { relations: ['user'] },
+    );
   }
 
   private async _removeRefreshToken(authenticationId: number) {
@@ -222,23 +242,5 @@ export class AuthenticationService {
     });
 
     return queryRunner.manager.save(authentication);
-  }
-
-  public async getAuthentication(
-    emailAddress: string,
-  ): Promise<AuthenticationEntity> {
-    return this._authenticationRepository.findOne(
-      { emailAddress },
-      /*
-       * User Entity will always join relationships with Authentication Entity,
-       * but there's no need to do it the other way around (we use { eager: true } in UserEntity file).
-       *
-       * However, this function is used in LocalStrategy and we need to return the user's uuid.
-       * Therefore, we need to rigidly add a relation to the user.
-       *
-       * This will allow us to add a user model with authorization to each request, not the authorization model itself.
-       */
-      { relations: ['user'] },
-    );
   }
 }
