@@ -129,26 +129,27 @@ export class AuthenticationService {
   public async registration({
     firstName,
     ...rest
-  }: RegistrationDto): Promise<AuthenticationEntity> {
+  }: RegistrationDto): Promise<UserEntity> {
     const queryRunner = this._connection.createQueryRunner();
 
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     try {
-      const user = await this._userService.createUser(
-        { firstName },
-        queryRunner,
-      );
-
       const authentication = await this._createAuthentication(
         rest,
-        user,
         queryRunner,
       );
+
+      const user = await this._userService.createUser(
+        { firstName },
+        authentication,
+        queryRunner,
+      );
+   
       await queryRunner.commitTransaction();
 
-      return authentication;
+      return user;
     } catch (error) {
       await queryRunner.rollbackTransaction();
 
@@ -233,13 +234,11 @@ export class AuthenticationService {
 
   private async _createAuthentication(
     createAuthenticationDto: CreateAuthenticationDto,
-    user: UserEntity,
     queryRunner: QueryRunner,
   ): Promise<AuthenticationEntity> {
-    const authentication = this._authenticationRepository.create({
-      ...createAuthenticationDto,
-      user,
-    });
+    const authentication = this._authenticationRepository.create(
+      createAuthenticationDto,
+    );
 
     return queryRunner.manager.save(authentication);
   }

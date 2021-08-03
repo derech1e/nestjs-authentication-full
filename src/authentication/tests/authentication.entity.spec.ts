@@ -27,7 +27,10 @@ describe('AuthenticationEntity class', () => {
   });
 
   it('should make a authentication with role and emailAddress only', () => {
-    const authentication = new AuthenticationEntity(RoleType.SUSPENSION, 'test@test.com');
+    const authentication = new AuthenticationEntity(
+      RoleType.SUSPENSION,
+      'test@test.com',
+    );
 
     expect(authentication).toBeTruthy();
     expect(authentication.role).toBe(RoleType.SUSPENSION);
@@ -39,7 +42,11 @@ describe('AuthenticationEntity class', () => {
   });
 
   it('should make a authentication with role, emailAddress, password only', () => {
-    const authentication = new AuthenticationEntity(RoleType.SUSPENSION, 'test@test.com', '123456');
+    const authentication = new AuthenticationEntity(
+      RoleType.SUSPENSION,
+      'test@test.com',
+      '123456',
+    );
 
     expect(authentication).toBeTruthy();
     expect(authentication.role).toBe(RoleType.SUSPENSION);

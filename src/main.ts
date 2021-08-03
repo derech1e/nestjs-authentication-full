@@ -27,8 +27,6 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
 
   await app.listen(port);
-
-  return app;
 }
 
 void bootstrap();

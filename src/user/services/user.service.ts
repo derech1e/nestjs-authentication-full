@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AuthenticationEntity } from 'src/authentication/entities';
 import { QueryRunner } from 'typeorm';
 import { CreateUserDto } from '../dtos';
 import { UserEntity } from '../entities';
@@ -10,9 +11,13 @@ export class UserService {
 
   public async createUser(
     createUserDto: CreateUserDto,
+    authentication: AuthenticationEntity,
     queryRunner: QueryRunner,
   ): Promise<UserEntity> {
-    const user = this._userRepository.create(createUserDto);
+    const user = this._userRepository.create({
+      ...createUserDto,
+      authentication,
+    });
     return queryRunner.manager.save(user);
   }
 

@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -34,14 +33,14 @@ export class AuthenticationController {
   @HttpCode(HttpStatus.OK)
   async registration(
     @Body() registrationDto: RegistrationDto,
-  ): Promise<AuthenticationEntity> {
-    const authentication = await this._authenticationService.registration(
+  ): Promise<UserEntity> {
+    const user = await this._authenticationService.registration(
       registrationDto,
     );
 
-    await this._mailService.sendConfirmationEmail(authentication);
+    await this._mailService.sendConfirmationEmail(user.authentication);
 
-    return authentication;
+    return user;
   }
 
   @HttpCode(HttpStatus.OK)
@@ -61,7 +60,7 @@ export class AuthenticationController {
 
   @UseGuards(JwtAccessTokenGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  @Delete('log-out')
+  @Patch('log-out')
   async logout(@Req() request: RequestWithUser): Promise<void> {
     await this._authenticationService.logout(request.user);
 

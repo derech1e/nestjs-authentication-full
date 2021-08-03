@@ -1,6 +1,7 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { ClientProxyFactory, Transport } from '@nestjs/microservices';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailModule } from 'src/mail';
@@ -30,6 +31,13 @@ import {
     JwtAccessTokenStrategy,
     JwtRefreshTokenStrategy,
     JwtConfirmTokenStrategy,
+    {
+      provide: 'MAIL_SERVICE',
+      useFactory: () =>
+        ClientProxyFactory.create({
+          transport: Transport.TCP,
+        }),
+    },
   ],
   exports: [AuthenticationService],
   controllers: [AuthenticationController],
